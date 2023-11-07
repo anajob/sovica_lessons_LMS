@@ -3,24 +3,12 @@ import { ActionArgs, json } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
 import { validateEmail } from "~/utils/emailValidation";
 import crypto from "crypto";
-
+import invariant from "tiny-invariant";
 const apiKey = process.env.RESET_PASSWORD_API_KEY;
 const resetEmail = process.env.RESET_PASSWORD_EMAIL;
 
-if (typeof apiKey === undefined) {
-  throw new Error("apiKey must be set");
-}
-
-if (typeof apiKey === null) {
-  throw new Error("apiKey must be set");
-}
-if (apiKey === "") {
-  throw new Error("apiKey must be set");
-}
-
-if (typeof resetEmail === undefined) {
-  throw new Error("resetEmail must be set");
-}
+invariant(apiKey, "apiKey must be set");
+invariant(resetEmail, "resetEmail must be set");
 
 async function sendMail(resetLink: string, email: string) {
   fetch("https://api.brevo.com/v3/smtp/email", {

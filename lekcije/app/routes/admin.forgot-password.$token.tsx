@@ -109,7 +109,7 @@ export default function PasswordForgot() {
             />
             <div className="card-body">
               <h4 className="card-title">Promena lozinke!</h4>
-              <p className="card-text">Unesite novu lozinku.</p>
+              <p className="card-text">Unesite novu lozinku .</p>
               <Form method="post" className="container-lg">
                 <div className="mb-3">
                   <div className="form-floating mb-3">
