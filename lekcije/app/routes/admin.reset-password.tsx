@@ -3,12 +3,25 @@ import { ActionArgs, json } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
 import { validateEmail } from "~/utils/emailValidation";
 import crypto from "crypto";
-import invariant from "tiny-invariant";
+import { useState } from "react";
+import { useNavigation } from "@remix-run/react";
 const apiKey = process.env.RESET_PASSWORD_API_KEY;
 const resetEmail = process.env.RESET_PASSWORD_EMAIL;
 
-invariant(apiKey, "apiKey must be set");
-invariant(resetEmail, "resetEmail must be set");
+if (typeof apiKey === undefined) {
+  throw new Error("apiKey must be set");
+}
+
+if (typeof apiKey === null) {
+  throw new Error("apiKey must be set");
+}
+if (apiKey === "") {
+  throw new Error("apiKey must be set");
+}
+
+if (typeof resetEmail === undefined) {
+  throw new Error("resetEmail must be set");
+}
 
 async function sendMail(resetLink: string, email: string) {
   fetch("https://api.brevo.com/v3/smtp/email", {
@@ -79,8 +92,9 @@ export const action = async function ({ request }: ActionArgs) {
 
       const resetLink = `http://localhost:3000/admin/forgot-password/${token}`;
       await sendMail(resetLink, validationResult.validPayload.email);
+
       return json({
-        message: "Imejl za resetovanje sifre je poslat na vasu mejl adresu",
+        message: "Imejl za resetovanje sifre je poslat na vasu imejl adresu",
       });
     }
   }
@@ -88,6 +102,7 @@ export const action = async function ({ request }: ActionArgs) {
 
 export default function resetPassword() {
   const actionData = useActionData();
+  const navigation = useNavigation();
   let errorsNode;
   if (actionData?.validationErrors && actionData.validationErrors.length > 0) {
     errorsNode = (
@@ -100,6 +115,13 @@ export default function resetPassword() {
       </div>
     );
   }
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+  };
+
+  console.log(actionData);
+
   return (
     <div className="wrapper">
       <div className="centered-form">
@@ -129,7 +151,11 @@ export default function resetPassword() {
               <p className="card-text">
                 Unesite mejl na koji ce vam stici link za promenu lozinke.
               </p>
-              <Form method="post" className="container-lg">
+              <Form
+                onSubmit={handleSubmit}
+                method="post"
+                className="container-lg"
+              >
                 <div className="mb-3">
                   <div className="form-floating mb-3">
                     <input
@@ -144,13 +170,23 @@ export default function resetPassword() {
                   </div>
                 </div>
                 <div>
-                  <button className="btn btn-primary mt-2" type="submit">
-                    Posalji
-                  </button>
+                  <div className="d-grid mx-auto gap-2">
+                    <button
+                      className="btn btn-primary mt-2"
+                      type="submit"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Poslato" : "Posalji"}
+                    </button>
+                  </div>
                 </div>
               </Form>
               {actionData && actionData.message && (
-                <div className="alert alert-primary" role="alert">
+                <div
+                  className="alert alert-primary"
+                  style={{ marginTop: "100px" }}
+                  role="alert"
+                >
                   {actionData.message}
                 </div>
               )}

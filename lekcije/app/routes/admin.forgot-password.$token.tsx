@@ -195,7 +195,7 @@ export default function PasswordForgot() {
                   </div>
                 </div>
 
-                <div>
+                <div className="d-grid mx-auto gap-2">
                   <button className="btn btn-primary mt-2" type="submit">
                     Sacuvaj
                   </button>

@@ -164,9 +164,11 @@ export default function AdminLogin() {
                 </div>
 
                 <div>
-                  <button className="btn btn-primary mt-2" type="submit">
-                    Registruj se
-                  </button>
+                  <div className="d-grid mx-auto gap-2">
+                    <button className="btn btn-primary mt-2" type="submit">
+                      Registruj se
+                    </button>
+                  </div>
                 </div>
               </Form>
               <div className="info-links">
