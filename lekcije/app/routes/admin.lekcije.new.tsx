@@ -94,7 +94,11 @@ export default function Lekcija() {
   let errorsNode;
   if (actionData?.validationErrors && actionData.validationErrors.length > 0) {
     errorsNode = (
-      <div className="alert alert-danger" role="alert">
+      <div
+        className="alert alert-danger auth-alert"
+        style={{ marginTop: "10px" }}
+        role="alert"
+      >
         <ul>
           {actionData?.validationErrors.map((error) => (
             <li key={error}>{error}</li>
@@ -117,7 +121,6 @@ export default function Lekcija() {
 
   return (
     <div className="wrapper">
-      {errorsNode}
       <div className="card">
         <div className="card-body d-flex justify-content-between align-items-center">
           <nav aria-label="breadcrumb">
@@ -194,6 +197,7 @@ export default function Lekcija() {
                 Sacuvaj
               </button>
             </div>
+            {errorsNode}
           </Form>
         </div>
       </div>

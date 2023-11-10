@@ -3,7 +3,7 @@ import { ActionArgs, json } from "@remix-run/server-runtime";
 import { authenticateAdminUser } from "~/admin-session.server";
 import { prisma } from "~/db.server";
 import bcrypt from "bcryptjs";
-import { validateUserCreatePayload } from "~/utils/validateUser";
+import { validateUserCreatePayload } from "~/utils/validateUserCreate";
 import { generateRandomPassword } from "~/utils/generateRandomPassword";
 import { useState } from "react";
 

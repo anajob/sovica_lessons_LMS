@@ -1,10 +1,10 @@
 import { Form, useActionData } from "@remix-run/react";
-import { ActionArgs, json } from "@remix-run/server-runtime";
+import { ActionArgs, json, redirect } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
-import { validateEmail } from "~/utils/emailValidation";
 import crypto from "crypto";
 import { useState } from "react";
 import { useNavigation } from "@remix-run/react";
+
 const apiKey = process.env.RESET_PASSWORD_API_KEY;
 const resetEmail = process.env.RESET_PASSWORD_EMAIL;
 
@@ -61,42 +61,60 @@ async function sendMail(resetLink: string, email: string) {
 export const action = async function ({ request }: ActionArgs) {
   const formData = await request.formData();
   const email = formData.get("email");
-  const validationResult = validateEmail(email);
-  if (!validationResult.isValid) {
-    return json({
-      validationErrors: validationResult.validationErrors,
-    });
+  const errorValidation: (string | string[])[] = [];
+
+  if (email === null) {
+    errorValidation.push("Email nije unet");
+  }
+
+  if (typeof email !== "string") {
+    errorValidation.push("Email nije validan");
+  }
+
+  if (email !== null && email.length < 6) {
+    errorValidation.push("Email mora sadrzati minimum sest karaktera");
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isValid = emailRegex.test(email as string);
+  if (!isValid) {
+    errorValidation.push("Email nije validan");
+  }
+
+  function generateUniqueToken() {
+    return crypto.randomBytes(20).toString("hex");
+  }
+  const token = generateUniqueToken();
+
+  const user = await prisma.adminUser.findFirst({
+    where: {
+      email: email as string,
+    },
+  });
+  if (user === null) {
+    errorValidation.push("Ne postoji korisnik sa tom mejl adresom");
   } else {
-    const user = await prisma.adminUser.findFirst({
+    await prisma.adminUser.update({
       where: {
-        email: validationResult.validPayload.email,
+        id: user?.id,
+      },
+      data: {
+        token: token,
       },
     });
-    if (user === null) {
-      return json({
-        validationErrors: ["Ne postoji korisnik sa tom mejl adresom"],
-      });
-    } else {
-      function generateUniqueToken() {
-        return crypto.randomBytes(20).toString("hex");
-      }
-      const token = generateUniqueToken();
-      await prisma.adminUser.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          token: token,
-        },
-      });
+  }
 
-      const resetLink = `http://localhost:3000/admin/forgot-password/${token}`;
-      await sendMail(resetLink, validationResult.validPayload.email);
+  const resetLink = `http://localhost:3000/admin/forgot-password/${token}`;
 
-      return json({
-        message: "Imejl za resetovanje sifre je poslat na vasu imejl adresu",
-      });
-    }
+  if (errorValidation.length > 0) {
+    return json({
+      errorValidation,
+    });
+  } else {
+    await sendMail(resetLink, email as string);
+    return json({
+      message: "Imejl za resetovanje sifre je poslat na vasu imejl adresu",
+    });
   }
 };
 
@@ -104,11 +122,15 @@ export default function resetPassword() {
   const actionData = useActionData();
   const navigation = useNavigation();
   let errorsNode;
-  if (actionData?.validationErrors && actionData.validationErrors.length > 0) {
+  if (actionData?.errorValidation && actionData.errorValidation.length > 0) {
     errorsNode = (
-      <div className="alert alert-danger" role="alert">
+      <div
+        className="alert alert-danger auth-alert"
+        style={{ marginTop: "100px" }}
+        role="alert"
+      >
         <ul>
-          {actionData?.validationErrors.map((error: any) => (
+          {actionData?.errorValidation.map((error: any) => (
             <li key={error}>{error}</li>
           ))}
         </ul>
@@ -119,8 +141,6 @@ export default function resetPassword() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
   };
-
-  console.log(actionData);
 
   return (
     <div className="wrapper">
@@ -190,6 +210,7 @@ export default function resetPassword() {
                   {actionData.message}
                 </div>
               )}
+              {errorsNode}
             </div>
           </div>
         </div>

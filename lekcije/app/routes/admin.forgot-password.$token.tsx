@@ -1,4 +1,4 @@
-import { Form, useActionData } from "@remix-run/react";
+import { Form, useActionData, useLoaderData } from "@remix-run/react";
 import { ActionArgs } from "@remix-run/server-runtime";
 import { useState } from "react";
 import { redirect } from "react-router-dom";
@@ -6,8 +6,19 @@ import { prisma } from "~/db.server";
 import { generateRandomPassword } from "~/utils/generateRandomPassword";
 import bcrypt from "bcryptjs";
 import { adminUser } from "@prisma/client";
-import { set } from "zod";
 import { json } from "@remix-run/node";
+
+export const loader = async function loader({ request, params }: ActionArgs) {
+  const user: adminUser | null = await prisma.adminUser.findFirst({
+    where: {
+      token: params.token,
+    },
+  });
+
+  return json({
+    error: user === null ? "Link za resetovanje lozinke je nevalidan" : "",
+  });
+};
 
 export const action = async function ({ request, params }: ActionArgs) {
   const user: adminUser | null = await prisma.adminUser.findFirst({
@@ -19,7 +30,9 @@ export const action = async function ({ request, params }: ActionArgs) {
   const validationErrors = [];
 
   if (user === null) {
-    validationErrors.push(`Korisnik sa ovim mejlom ne postoji`);
+    validationErrors.push(
+      `Korisnik sa ovim mejlom ne postoji. Nevalidan token. Pokusajte ponovo.`
+    );
   }
 
   const formData = await request.formData();
@@ -48,6 +61,21 @@ export const action = async function ({ request, params }: ActionArgs) {
 
 export default function PasswordForgot() {
   const actionData = useActionData<typeof action>();
+  const loaderData = useLoaderData<typeof loader>();
+  if (loaderData.error !== "") {
+    return (
+      <div className="wrapper">
+        <div
+          className="alert alert-danger"
+          role="alert"
+          style={{ marginTop: "50px" }}
+        >
+          {loaderData.error}
+        </div>
+      </div>
+    );
+  }
+
   const [passInputValue, setPassInputValue] = useState("");
   const [confirmPassInputValue, setconfirmPassInputValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -72,7 +100,11 @@ export default function PasswordForgot() {
   let errorsNode;
   if (actionData && actionData.validationErrors.length > 0) {
     errorsNode = (
-      <div className="alert alert-danger" role="alert">
+      <div
+        className="alert alert-danger auth-alert"
+        role="alert"
+        style={{ marginTop: "50px" }}
+      >
         <ul>
           {actionData.validationErrors.map((error: any) => (
             <li key={error}>{error}</li>
@@ -84,7 +116,6 @@ export default function PasswordForgot() {
 
   return (
     <div className="wrapper">
-      {errorsNode}
       <div className="centered-form">
         <div
           className="d-flex flex-container justify-content-center"
@@ -201,6 +232,7 @@ export default function PasswordForgot() {
                   </button>
                 </div>
               </Form>
+              {errorsNode}
             </div>
           </div>
         </div>

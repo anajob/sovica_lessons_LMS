@@ -1,5 +1,5 @@
 import type { ActionArgs, LoaderArgs } from "@remix-run/node";
-import { Form, Link, useLoaderData } from "@remix-run/react";
+import { Form, Link, useActionData, useLoaderData } from "@remix-run/react";
 import {
   json,
   unstable_composeUploadHandlers as composeUploadHandlers,
@@ -17,9 +17,10 @@ import { useRef, useState } from "react";
 import bcrypt from "bcryptjs";
 import Input from "~/components/Input";
 import { useInsideOutsideClick } from "~/utils/useInsideOutsideClick";
-import { validateUserCreatePayload } from "~/utils/validateUser";
+import { validateUserCreatePayload } from "~/utils/validateUserCreate";
 import { uploadImageToCloudinary } from "~/utils/util.server";
 import { useProfileImageHandling } from "~/utils/generateUrl";
+import { generateRandomPassword } from "~/utils/generateRandomPassword";
 
 export const loader = async function loader({ request, params }: LoaderArgs) {
   await ensureAuthenticated(request);
@@ -74,6 +75,18 @@ export const action = async function ({ request }: ActionArgs) {
     });
   }
 
+  const userInDatabasee = await prisma.adminUser.findFirst({
+    where: {
+      email: validationResult.validPayload.email,
+    },
+  });
+
+  if (userInDatabasee !== null) {
+    return json({
+      validationErrors: ["Korisnik sa ovim mejlom vec postoji"],
+    });
+  }
+
   const user = await prisma.adminUser.create({
     data: {
       nickName: validationResult.validPayload.nickName,
@@ -90,6 +103,19 @@ export const action = async function ({ request }: ActionArgs) {
 export default function newUser() {
   const dataFromJson = useLoaderData<typeof loader>();
   const nickName = dataFromJson.nickName;
+  const actionData = useActionData();
+  let errorsNode;
+  if (actionData?.validationErrors && actionData.validationErrors.length > 0) {
+    errorsNode = (
+      <div className="alert alert-danger" role="alert">
+        <ul>
+          {actionData?.validationErrors.map((error: string) => (
+            <li>{error}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownToggleRef = useRef<HTMLDivElement | null>(null);
@@ -104,8 +130,21 @@ export default function newUser() {
   const { previewImgUrl, processImage, handleImgRemoving } =
     useProfileImageHandling(null);
 
+  const [passInputValue, setPassInputValue] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const handleTogglePassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleGeneratePassword = () => {
+    const newPassword = generateRandomPassword();
+    setPassInputValue(newPassword);
+  };
+  const showIcon = passInputValue !== "";
+
   return (
     <div className="wrapper">
+      {errorsNode}
       <div className="card">
         <div className="card-body d-flex justify-content-between align-items-center">
           <nav aria-label="breadcrumb">
@@ -199,7 +238,27 @@ export default function newUser() {
               placeholder="lozinka..."
               name="password"
             />
-
+            {showIcon && (
+              <div className="show-pass">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={handleTogglePassword}
+                >
+                  <i
+                    className={showPassword ? "fa fa-eye" : "fa fa-eye-slash"}
+                    aria-hidden="true"
+                  ></i>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={handleGeneratePassword}
+                >
+                  <i className="fa fa-key" aria-hidden="true"></i>
+                </button>
+              </div>
+            )}
             <div>
               <button className="btn btn-outline-success mt-2" type="submit">
                 Sacuvaj

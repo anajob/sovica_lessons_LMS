@@ -191,7 +191,11 @@ export default function Lekcije() {
             <div className="top-bar card">
               <div className="card-body d-flex justify-content-between">
                 <div className="media-body">
-                  <a className="navbar-brand" href="#">
+                  <a
+                    className="navbar-brand"
+                    href="#"
+                    data-testid="userGreeting"
+                  >
                     Cao, {nickName}!
                   </a>
                 </div>

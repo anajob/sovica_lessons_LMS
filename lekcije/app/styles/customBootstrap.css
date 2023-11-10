@@ -475,3 +475,12 @@
 .plain-btn span {
     margin: 0 10px;
 }
+.auth-alert ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.auth-alert {
+    padding: 0;
+    margin: 0;
+}

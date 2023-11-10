@@ -1,53 +1,75 @@
 import { authenticateAdminUser } from "~/admin-session.server";
-import { Form, Link } from "@remix-run/react";
-import { ActionArgs } from "@remix-run/server-runtime";
+import { Form, Link, useActionData } from "@remix-run/react";
+import { ActionArgs, json } from "@remix-run/server-runtime";
 import { redirect } from "react-router";
 import { prisma } from "~/db.server";
 import bcrypt from "bcryptjs";
 import { useState } from "react";
 import { generateRandomPassword } from "~/utils/generateRandomPassword";
+import { validateUserLoginPayload } from "~/utils/validateUserLogin";
 
 export const action = async function ({ request, params }: ActionArgs) {
   const formData = await request.formData();
-  const email = formData.get("email");
-  const password = formData.get("password");
+  const validationResult = validateUserLoginPayload(formData);
+  let validationErrors = [];
 
-  if (typeof email !== "string") {
-    throw new Error(`email must be string, got null`);
-  }
-  if (typeof password !== "string") {
-    throw new Error(`password must be a string`);
-  }
-
-  const user = await prisma.adminUser.findFirst({
-    where: {
-      email,
-    },
-  });
-  if (user === null) {
-    throw new Error(`user with this email doesn't exist`);
-  }
-
-  if (await bcrypt.compare(password, user.password)) {
-    return await authenticateAdminUser(request, user);
+  if (!validationResult.isValid) {
+    return json({
+      validationErrors: validationResult.validationErrors,
+    });
   } else {
-    return redirect("/admin/login");
+    const user = await prisma.adminUser.findFirst({
+      where: {
+        email: validationResult.validPayload.email,
+      },
+    });
+
+    if (user === null) {
+      validationErrors.push("Korisnik sa ovim mejlom ne postoji");
+    } else {
+      if (
+        await bcrypt.compare(
+          validationResult.validPayload.password,
+          user.password
+        )
+      ) {
+        return await authenticateAdminUser(request, user);
+      } else {
+        validationErrors.push("Pogrešna lozinka");
+      }
+    }
+    return json({
+      validationErrors: validationErrors,
+    });
   }
 };
 
 export default function AdminLogin() {
+  const actionData = useActionData();
   const [passInputValue, setPassInputValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const handleTogglePassword = () => {
     setShowPassword(!showPassword);
   };
-
+  console.log("actionData", actionData);
   const handleGeneratePassword = () => {
     const newPassword = generateRandomPassword();
     setPassInputValue(newPassword);
   };
 
   const showIcon = passInputValue !== "";
+  let payloadErrorsNode;
+  if (actionData?.validationErrors && actionData.validationErrors.length > 0) {
+    payloadErrorsNode = (
+      <div className="alert alert-danger auth-alert" role="alert">
+        <ul>
+          {actionData?.validationErrors.map((error: string) => (
+            <li key={error}>{error}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   return (
     <div className="centered-form">
@@ -82,12 +104,13 @@ export default function AdminLogin() {
                   <input
                     type="email"
                     className="form-control"
-                    id="floatingInput"
+                    id="usernameInput"
                     placeholder="name@example.com"
                     required
                     name="email"
+                    data-testid="emailInput"
                   />
-                  <label htmlFor="floatingInput">Imejl adresa:</label>
+                  <label htmlFor="usernameInput">Imejl adresa:</label>
                 </div>
               </div>
               <div className="mb-3">
@@ -95,7 +118,7 @@ export default function AdminLogin() {
                   <input
                     type={showPassword ? "text" : "password"}
                     className="form-control"
-                    id="floatingInput"
+                    id="passwordInput"
                     placeholder="name@example.com"
                     required
                     name="password"
@@ -103,8 +126,9 @@ export default function AdminLogin() {
                     onChange={(e) => {
                       setPassInputValue(e.target.value);
                     }}
+                    data-testid="passwordInput"
                   />
-                  <label htmlFor="floatingInput">Lozinka:</label>
+                  <label htmlFor="passwordInput">Lozinka:</label>
                   {showIcon && (
                     <div className="show-pass">
                       <button
@@ -132,7 +156,11 @@ export default function AdminLogin() {
               </div>
               <div>
                 <div className="d-grid mx-auto gap-2">
-                  <button className="btn btn-primary mt-2" type="submit">
+                  <button
+                    className="btn btn-primary mt-2"
+                    type="submit"
+                    data-testid="loginButton"
+                  >
                     Uloguj se
                   </button>
                 </div>
@@ -153,6 +181,7 @@ export default function AdminLogin() {
                 srpskog jezika!
               </p>
             </div>
+            {payloadErrorsNode}
           </div>
         </div>
       </div>

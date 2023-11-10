@@ -1,3 +1,5 @@
+import { prisma } from "~/db.server";
+
 type UserCreatePayload = {
   email: any;
   password: any;

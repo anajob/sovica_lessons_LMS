@@ -147,7 +147,7 @@ export default function Lekcija() {
   let errorsNode;
   if (actionData?.validationErrors && actionData.validationErrors.length > 0) {
     errorsNode = (
-      <div className="alert alert-danger" role="alert">
+      <div className="alert alert-danger auth-alert" role="alert">
         <ul>
           {actionData?.validationErrors.map((error) => (
             <li key={error}>{error}</li>
